@@ -1,0 +1,13 @@
+period	0.1
+pulseV	5
+response	[]
+attn	0		
+min_delay	1
+max_delay	1.1
+duration	10
+chans	[]
+intervals	[]
+samps	[]
+nReps	0
+nSpeakers	7
+valveTime	0.1	
