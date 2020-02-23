@@ -1,0 +1,13 @@
+1. Golay calibration
+(o4golayrec)
+
+
+2. Gives you calib structure, used to make calibration text file
+(makeFRAfilter)
+
+Requires measurement of absolute level (e.g 110 dB), which is the amplitude recorded to a 5k tone (e.g. 90 dB) minus the attenuation in the calibration spectrogram at 5k (e.g. -20)
+
+
+3. Use table in text file to select attenuation for FRA
+
+4. Play tones and check that all frequencies are recorded with a constant amplitude (+/- 2 dB)

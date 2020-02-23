@@ -1,0 +1,26 @@
+abortTrial	14	
+abortedTrials	0
+attenMax	12
+attenMin	6
+attenSteps	4
+centerRewardP	1
+centerValveTime	200		
+duration	250	
+holdIndii	1	
+holdMax	2001	
+holdMin	1001	
+holdSteps	10	
+isi	250
+leftValveTime	200
+performance	zeros(2)
+period	0.1
+pitchMax	200
+pitchMin	200
+pitchSteps	1			
+response	[]	
+rightValveTime	200		
+side	0
+sound	[0,0,0,0]
+startResponseTime	[]	
+sumCorrect	0	
+

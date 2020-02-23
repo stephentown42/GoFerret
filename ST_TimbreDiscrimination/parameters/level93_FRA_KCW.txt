@@ -1,0 +1,15 @@
+centerRewardP	0
+centerValveTime	100		
+leftValveTime	100	
+rightValveTime	100	
+duration	100	
+isi	1
+period	0.1
+startResponseTime	[]	
+toneMinAttn 0
+toneMaxAttn 70
+toneAttnInt 10
+toneMinFreq 150
+toneMaxFreq 20000
+toneOctInt  1/3
+
