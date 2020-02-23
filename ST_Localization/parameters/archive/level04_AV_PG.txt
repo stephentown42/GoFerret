@@ -1,0 +1,27 @@
+abortTrial	60
+abortedTrials	0
+absentTime	0.3
+centerRewardP	1
+centerValveTime	0.02
+duration	0.5
+errorLimit	5
+flipped	0
+hold.Max	1.001
+hold.Min	0.701
+hold.Steps	4
+isi	0.150
+LED_bgnd_V	1
+LED_stim_V	2.5
+nStimRepeats	10
+period	0.1
+response	[]
+Spkr_bgnd_dB	30
+Spkr_stim_dB	20
+Spkr_distractor_dB	20
+stim.LEDpositions	[2,10,12]
+stim.SpeakerPositions	[2,10,12]
+stim.modalities	[1]
+stim.multisensoryTrials	0
+stim.unisensoryTrials	1
+valveTimes	[0.15,0.2,0.15,0.15,0.15,0.15,0.15,0.15,0.15,0.15,0.15,0.15]
+

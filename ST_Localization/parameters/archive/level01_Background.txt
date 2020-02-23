@@ -1,0 +1,20 @@
+abortTrial	14	
+abortedTrials	0
+absentTime	0.3
+centerRewardP	1
+duration	250		
+holdIndii	1	
+holdMax	1001	
+holdMin	501	
+holdSteps	10	
+isi	250
+performance	zeros(2)
+period	0.1	
+refractoryTime	1	
+response	[]	
+valveTimes	[0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3,0.3]
+startResponseTime	[]	
+sumCorrect	0		
+LED_bgnd_V	0
+Spkr_bgnd_V	0
+

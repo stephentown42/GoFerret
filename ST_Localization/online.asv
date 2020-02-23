@@ -1,0 +1,706 @@
+function varargout = online(varargin)
+% ONLINE MATLAB code for online.fig
+%      ONLINE, by itself, creates a new ONLINE or raises gfe existing
+%      singleton*.
+%
+%      H = ONLINE returns gfe handle to a new ONLINE or gfe handle to
+%      gfe existing singleton*.
+%
+%      ONLINE('CALLBACK',hObject,eventData,handles,...) calls gfe local
+%      function named CALLBACK in ONLINE.M wigf gfe given input arguments.
+%
+%      ONLINE('Property','Value',...) creates a new ONLINE or raises gfe
+%      existing singleton*.  Starting from gfe left, property value pairs are
+%      applied to gfe GUI before online_OpeningFcn gets called.  An
+%      unrecognized property name or invalid value makes property application
+%      stop.  All inputs are passed to online_OpeningFcn via varargin.
+%
+%      *See GUI Options on GUIDE's Tools menu.  Choose "GUI allows only one
+%      instance to run (singleton)".
+%
+% See also: GUIDE, GUIDATA, GUIHANDLES
+
+% Edit gfe above text to modify gfe response to help online
+
+% Last Modified by GUIDE v2.5 07-Feb-2020 12:58:04
+
+% Begin initialization code - DO NOT EDIT
+gui_Singleton = 1;
+gui_State = struct('gui_Name',       mfilename, ...
+                   'gui_Singleton',  gui_Singleton, ...
+                   'gui_OpeningFcn', @online_OpeningFcn, ...
+                   'gui_OutputFcn',  @online_OutputFcn, ...
+                   'gui_LayoutFcn',  [] , ...
+                   'gui_Callback',   []);
+if nargin && ischar(varargin{1})
+    gui_State.gui_Callback = str2func(varargin{1});
+end
+
+if nargout
+    [varargout{1:nargout}] = gui_mainfcn(gui_State, varargin{:});
+else
+    gui_mainfcn(gui_State, varargin{:});
+end
+% End initialization code - DO NOT EDIT
+
+
+% --- Executes just before online is made visible.
+function online_OpeningFcn(hObject, ~, handles, varargin)
+
+global DA gf h
+
+handles.output = hObject;
+guidata(hObject, handles);
+h = handles;
+
+% Establish connection with TDT 
+DA = actxcontrol('TDevAcc.X');
+DA.ConnectServer('Local');
+
+sl=strfind(gf.saveDir,'\');
+gf.subjectDir=gf.saveDir(sl(end)+1:end);
+
+recFerrets = {'F1801_Carter','F1807_Cheeseburger',...
+              'F1703_Grainger','F1701_Pendleton','F1904_Flan','F1905_Sponge',...
+              'F1810_Ursula','F1811_Dory','F1901_Crumble','F1902_Eclair','F0_Developer'};
+
+if any( strcmp( gf.subjectDir, recFerrets))
+    choice = 'Yes';%('Do you want to record neural data to tank during task?','s');
+else
+    choice = 'No';
+end
+
+
+switch choice
+    
+    case 'Yes'
+        
+        gf.tankDir='D:\UCL_Behaving';
+        gf.tankDir = fullfile(gf.tankDir, gf.subjectDir);
+        
+        if ~isdir(gf.tankDir),
+            warning('Tank \n %s \n does not exist - please create in open Ex')          %#ok<*WNTAG>
+        end
+        
+        DA.SetTankName(gf.tankDir)
+        DA.SetSysMode(3);
+        
+        pause(3)
+        
+        % Get block name
+        TT = actxcontrol('TTank.X');
+        TT.ConnectServer('Local','Me');
+        tankOpen=TT.OpenTank(gf.tankDir,'R');
+         pause(1)
+        gf.recBlock = TT.GetHotBlock; 
+        gf.recBlock = TT.GetHotBlock; 
+        TT.CloseTank;
+        TT.ReleaseServer;
+        clear TT
+        
+        if isempty(gf.recBlock),
+            gf.recBlock = 'UnknownBlock';
+            
+            disp('Unknown Block - start GoFerret again')
+            %             % Set device to idle
+            % (This avoids sounds/lights being produced when you no longer have GUI control)
+            DA.SetSysMode(0);
+            
+            % Close connections and windows
+            DA.CloseConnection
+            
+            close(handles.figure1)
+            
+            % Restore default paths
+            path(gf.defaultPaths)
+            
+            % Delete structures
+            clear global DA gf h
+            clear
+        end
+        
+    case 'No'
+     
+ 
+    %DAfig = figure('position',[0 0 100 100],'visible','on');
+    gf.systemStatus = DA.SetSysMode(2);         
+    errorCount      = 0;
+    
+    while ~gf.systemStatus && errorCount < 10
+    
+       errorCount = errorCount + 1;
+       clear global DA 
+       fprintf('Redialing TDT\n')
+       DA = actxcontrol('TDevAcc.X');
+       DA.ConnectServer('Local');
+       gf.systemStatus = DA.SetSysMode(2);
+       pause(3)      
+    end
+    
+    if ~gf.systemStatus
+        error('Could not start TDT')
+    end
+    
+    gf.recBlock = 'log';
+    pause(3)
+end
+
+% Get sample rates 
+gf.fStim = DA.GetDeviceSF(gf.stimDevice);       
+gf.fRec  = DA.GetDeviceSF(gf.recDevice);
+
+% Run video function in background (requires '&' operator)
+trackFerrets = {'1701_Pendleton','F1703_Grainger','F1808_Skittles'};
+if any( strcmp( gf.subjectDir, trackFerrets))
+    !python C:\Users\Dumbo\Documents\Python\HighRes_IR_single_rec.py & exit &
+%     !python C:\Users\Dumbo\Documents\Python\Webcam_test_IR2_multicam_save.py & exit &
+else
+    !python C:\Users\Dumbo\Documents\Python\SplitScreen_IR_rec.py & exit &
+end
+
+% Reset all parameter tags
+tags = {'bit0C','bit1C','bit2C','bit4C','bit5C','bit6C','bit7C',...
+        'leftLick','centerLick','rightLick',...
+        'leftValve','centerValve','rightValve'};
+
+for i = 1 : length(tags)
+
+    tag = sprintf('%s.%s',gf.stimDevice, tags{i});
+    DA.SetTargetVal(tag,0);   
+end
+
+% Set date
+t        = fix(clock); 
+ss       = datestr(now,'SS.FFF');
+temp{1}  = sprintf('%d-%d-%d',t(3),t(2),t(1)); 
+temp{2}  = sprintf('%d:%d:%d',t(4),t(5),t(6));
+set(handles.dateH,'string',sprintf('%s\n%s\n',temp{1},temp{2}))
+
+
+% Make a new tab delimited file 
+paramFile = gf.paramFile(1:length(gf.paramFile)-4);                  % Remove extension from file name    
+filename  = sprintf('%02d_%02d_%02d %s %02d_%02d_%s %s.txt',...
+                        t(3), t(2), t(1), paramFile,...
+                        t(4), t(5), ss, gf.recBlock); 
+
+gf.fid = fopen( fullfile( gf.saveDir, filename), 'wt');
+logTrial(0,'header');      
+set(h.saveTo, 'string', strcat('Save to: ',gf.saveDir,'\', filename));
+
+%Set devices
+set(handles.devices,'string',sprintf(' %s \n %.3f',gf.stimDevice, gf.fStim))
+set(handles.slideCenterRewardP, 'value', gf.centerRewardP)
+set(handles.editCenterRewardP, 'string', num2str(gf.centerRewardP))
+
+% Define color scheme
+colors = struct('background', [39 40 34] ./ 255,...
+                'axis',[117 113 94] ./ 255,...
+                'performance', [0 1 0],...
+                'performance_cmap', magma,...
+                'bias', [248 39 114] ./ 255);
+
+% Position Online GUI
+set(h.figure1,'KeyPressFcn',@KeyPress,...
+    'color', colors.background)
+
+text_obj = findobj(h.figure1,'style','text');
+set(text_obj, 'ForegroundColor', colors.axis,...
+              'BackgroundColor', colors.background)
+
+% Performance 
+gf.levelNum = str2num(gf.filename(6:7));
+
+if gf.levelNum < 53
+    createPerformanceFig
+else
+    createPerformanceFig_CoordFrameProj(colors)
+end
+
+% Timeline               
+% Create figure
+h.timelineF = figure('NumberTitle',    'off',...
+                      'name',           'Timeline',...
+                      'color',          colors.background,...
+                      'units',          'centimeters',...
+                      'position',       [34.1 1.72 14.8 24.2],...
+                      'MenuBar',        'none',...
+                      'KeyPressFcn',    @KeyPress);    
+
+% Create axes labels
+yticklabels = cell(12,1);
+
+for i = 1 : 12
+    yticklabels{i} = sprintf('IR%02d',i);
+end
+
+yticklabels{6} = 'Center';
+
+% Create axes
+h.timelineA = axes('position',   [0.1 0.1 0.85 0.85],...
+                    'FontSize',   8,...
+                    'FontName',   'arial',...
+                    'color',      colors.background,...
+                    'xcolor',     colors.axis,...
+                    'ycolor',     colors.axis,...
+                    'ylim',       [0 13],...
+                    'ytick',      1:12,...
+                    'yticklabel', yticklabels);
+
+xlabel(h.timelineA, 'Time (seconds)')    
+
+% Update online position
+set(h.figure1,'KeyPressFcn',   @KeyPress,...
+       'position',[3.8 3.6 170 32])
+
+% Setup timer
+h.tasktimer = timer('TimerFcn',         sprintf('%s',gf.filename),...
+                    'BusyMode',         'drop',...
+                    'ExecutionMode',    'fixedRate',...
+                    'Period',           gf.period);                    
+
+
+gf.beep_given = false;
+gf.biasTracker    = struct('data',[],'idx',0,'window',8,'current',0,'rate',0.1,'saturation',0.2);
+gf.centerPixelVal = 256; % Default value when tracking is not on
+gf.centerStatus   = 0;
+gf.centerReward   = 0;
+gf.correctionTrial = 0;
+gf.pastResponse   = 0;
+gf.responseTime   = 0;
+gf.startTrialTime = 0;
+gf.transMat = zeros(4,4,3);
+gf.timeout_start  = 0;
+gf.stim.idx       = 0;
+gf.startTime      = now;    
+gf.status         = 'PrepareStim';                  
+gf.track          = isfield(gf,'trackThreshold');
+
+if gf.box_mode == 2
+    gf.box_mode = 'platform'; 
+else
+    gf.box_mode = 'ring';
+end    
+
+DA.SetTargetVal( sprintf('%s.centerEnable',gf.stimDevice), 1);
+
+% Perform one-off calculations for clicks for neural testing (14 March 2019)
+if isfield(gf,'clicks')        
+    gf.clicks = initialize_clicks( gf.clicks, gf.fStim);                
+end
+
+% Set tracking threshold
+if gf.track
+    DA.SetTargetVal( sprintf('%s.track_thresh',gf.stimDevice), gf.trackThreshold);
+end
+    
+if isvalid(h.tasktimer) == 1,
+    start(h.tasktimer);
+end
+
+
+function varargout = online_OutputFcn(~, ~, ~)  %#ok<STOUT>
+%varargout{1} = handles.output;
+
+global h
+
+set(h.figure1,'KeyPressFcn',   @KeyPress)  % This is the 3rd time you've repeated this line!!!
+
+
+%%%%%%%%%%%%%%%%%%%%%%% CONTROLABLE PARAMETERS %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% gf.variable = str2num( get(handles.variable,'value'))
+% 
+
+% Hold time controls
+function setHoldMin_Callback(~, ~, handles)
+
+global gf
+gf.holdMin = str2num( get(handles.editHoldMin,'string')); %#ok<*ST2NM>
+
+function setHoldSteps_Callback(~, ~, handles)
+
+global gf
+gf.holdSteps = str2num( get(handles.editHoldSteps,'string'));
+
+function setHoldMax_Callback(~, ~, handles)
+
+global gf
+gf.holdMax = str2num( get(handles.editHoldMax,'string'));
+
+
+% Attenuation controls
+function setAttenMin_Callback(~, ~, handles)
+
+global gf
+gf.attenMin = str2num( get(handles.editAttenMin,'string'));
+
+function setAttenSteps_Callback(~, ~, handles)
+
+global gf
+gf.attenSteps = str2num( get(handles.editAttenSteps,'string'));
+
+function setAttenMax_Callback(~, ~, handles)
+
+global gf
+gf.attenMax = str2num( get(handles.editAttenMax,'string'));
+
+
+% Pitch controls
+function setPitchMin_Callback(~, ~, handles)
+
+global gf
+gf.pitchMin = str2num( get(handles.editPitchMin,'string'));
+
+function setPitchSteps_Callback(~, ~, handles)
+
+global gf
+gf.pitchSteps = str2num( get(handles.editPitchSteps,'string'));
+
+function setPitchMax_Callback(~, ~, handles)
+
+global gf
+gf.pitchMax = str2num( get(handles.editPitchMax,'string'));
+
+% Valve time controls
+
+function setLeftValveTime_Callback(~, ~, handles)
+
+global gf
+gf.leftValveTime = str2num( get(handles.editLeftValveTime,'string')); 
+
+function setCenterValveTime_Callback(~, ~, handles)
+
+global gf
+gf.centerValveTime = str2num( get(handles.editCenterValveTime,'string')); 
+
+function setRightValveTime_Callback(~, ~, handles)
+
+global gf
+gf.rightValveTime = str2num( get(handles.editRightValveTime,'string')); 
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% Key Press %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%   Monitors key pressed when online GUI is current figure
+%
+%	Key:        name of the key that was pressed, in lower case
+%	Character:  character interpretation of the key(s) that was pressed
+%	Modifier:   name(s) of the modifier key(s) (i.e., control, shift) pressed
+%
+function KeyPress(src,event)
+
+global gf DA
+
+if strcmp(event.Key,'equal')
+    valveJumbo_J5(6,gf.valveTimes(6), gf.box_mode)
+end
+
+% Valves based on F numbers
+for i = 1 : 12    
+   if strcmp(event.Key,sprintf('f%d',i))
+       valveJumbo_J5(i, gf.valveTimes(i), gf.box_mode)
+   end
+end
+
+if strcmp(event.Key,'+')        
+    DA.SetTargetVal( sprintf('%s.ManualPlay', gf.stimDevice),    1);
+    DA.SetTargetVal( sprintf('%s.ManualPlay', gf.stimDevice),    0);
+end
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Circuit Controls %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Buttons that allow the user interface to control parameters within the
+% RPvdsEX circuit directly.
+
+% Safety switch 
+function enableControl_Callback(~, ~, handles)
+
+global DA gf
+
+%Update all control tickboxes
+set(handles.bit0C,'Value', DA.GetTargetVal(sprintf('%s.bit0C',gf.stimDevice)))
+set(handles.bit1C,'Value', DA.GetTargetVal(sprintf('%s.bit1C',gf.stimDevice)))
+set(handles.bit2C,'Value', DA.GetTargetVal(sprintf('%s.bit2C',gf.stimDevice)))
+set(handles.bit7C,'Value', DA.GetTargetVal(sprintf('%s.bit7C',gf.stimDevice)))
+
+%Bit 0 Control
+function bit0C_Callback(~, ~, handles)
+
+global DA gf
+
+if get(handles.enableControl,'value') == 1,
+
+    tag = sprintf('%s.bit0C',gf.stimDevice);
+    val = get(handles.bit0C,'value');
+
+    DA.SetTargetVal(tag, val);
+end
+
+%Bit 1 Control
+function bit1C_Callback(~, ~, handles)
+
+global DA gf
+
+if get(handles.enableControl,'value') == 1,
+
+    tag = sprintf('%s.bit1C',gf.stimDevice);
+    val = get(handles.bit1C,'value');
+
+    DA.SetTargetVal(tag, val);
+end
+
+%Bit 2 Control
+function bit2C_Callback(~, ~, handles)
+
+global DA gf
+
+if get(handles.enableControl,'value') == 1,
+
+    tag = sprintf('%s.bit2C',gf.stimDevice);
+    val = get(handles.bit2C,'value');
+
+    DA.SetTargetVal(tag, val);
+end
+
+%Bit 7 Control
+function bit7C_Callback(~, ~, handles)
+
+global DA gf
+
+if get(handles.enableControl,'value') == 1,
+
+    tag = sprintf('%s.bit7C',gf.stimDevice);
+    val = get(handles.bit7C,'value');
+
+    DA.SetTargetVal(tag, val);
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%% Valve Controls %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Left Valve Control
+function leftValveC_Callback(~, ~, handles)
+
+global gf
+
+if get(handles.leftValveC,'value') == 1 && get(handles.enableControl,'value') == 1,
+    valve(4, gf.leftValveTime, 1, 'left');                                                 %valve(bit, pulse time, pulse number, %sValve)
+end
+
+%Center Valve Control
+function centerValveC_Callback(~, ~, handles)
+
+global gf
+
+if get(handles.centerValveC,'value') == 1 && get(handles.enableControl,'value') == 1,
+    valve(6, gf.centerValveTime, 1, 'center'); 
+end
+
+%Right Valve Control
+function rightValveC_Callback(~, ~, handles)
+
+global gf
+
+if get(handles.rightValveC,'value') == 1 && get(handles.enableControl,'value') == 1,
+    valve(5, gf.rightValveTime, 1, 'right'); 
+end
+
+function slideCenterRewardP_Callback(~, ~, handles)
+
+global gf
+
+val = get(handles.slideCenterRewardP,'value');
+
+set(handles.editCenterRewardP, 'string', sprintf('%.2f',val));
+gf.centerRewardP = val;
+
+
+function editCenterRewardP_Callback(~, ~, handles)
+
+global gf
+
+str              = get(handles.editCenterRewardP,'string');  
+gf.centerRewardP = str2num(str); %#ok<ST2NM>
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% GRAPHICS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%PLOT SOUND WAVEFORM
+function plotWaveform_Callback(~, ~, ~)
+
+plotWaveform   %see toolbox
+
+
+%PLOT SPECTROGRAM OF STIMULUS
+function plotSpectrogram_Callback(~, ~, ~)
+
+plotSpectrogram % see toolbox
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%% EXIT BUTTON %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function Exit_Callback(~, ~, handles)                                 %#ok<*DEFNU>
+
+global DA gf h      
+
+% send end pulse to TDT for synchronisation with wireless
+DA.SetTargetVal('RX8.endPulse', 1);
+DA.SetTargetVal('RZ2.endPulse', 1);
+pause(0.5)
+DA.SetTargetVal('RX8.endPulse', 0);
+DA.SetTargetVal('RZ2.endPulse', 0);
+
+
+% Display performance
+fprintf('%d trials\n', gf.TrialNumber-1)
+
+for i = 1 : nUnique(h.im)
+  
+    cMat     = get(h.im(i),'CData');
+    nTrials  = sum(cMat(:));
+    nCorrect = sum(cMat(eye(12)==1)); 
+    pCorrect = nCorrect / nTrials * 100;    
+    
+    fprintf('\t%.1f %% (%d\\%d)', pCorrect, nCorrect, nTrials)
+    fprintf('\n')
+end
+
+% Close log file
+fclose(gf.fid);
+
+% Stop task timer
+stop(h.tasktimer);
+
+% Set device to idle
+% (This avoids sounds/lights being produced when you no longer have GUI control)
+DA.SetSysMode(0);
+
+% Close connections and windows
+DA.CloseConnection;
+
+close(handles.figure1)
+close(h.timelineF)
+close(h.performanceF)
+
+% Restore default paths
+path(gf.defaultPaths);
+
+% Delete structures
+clear global DA gf h
+clear
+
+gf = [];
+
+disp('session ended')
+disp('All structures removed and default paths restored')
+
+
+
+
+
+function leftLick_Callback(~,~,~)
+function rightLick_Callback(~,~,~)
+function centerLick_Callback(~,~,~)
+function bit0_Callback(~,~,~)
+function bit1_Callback(~,~,~)
+function bit2_Callback(~,~,~)
+function bit4_Callback(~,~,~)
+function bit5_Callback(~,~,~)
+function bit6_Callback(~,~,~)
+function bit7_Callback(~,~,~)
+function leftValve_Callback(~,~,~)
+function rightValve_Callback(~,~,~)
+function centerValve_Callback(~,~,~)
+function led_Callback(~,~,~)
+
+function editHoldMax_Callback(~, ~, ~)
+function editHoldMax_CreateFcn(~, ~, ~)
+function editHoldSteps_Callback(~, ~, ~)
+function editHoldSteps_CreateFcn(~, ~, ~)
+function editHoldMin_Callback(~, ~, ~)
+function editHoldMin_CreateFcn(~, ~, ~)
+
+function editAttenMax_Callback(~, ~, ~)
+function editAttenMax_CreateFcn(~, ~, ~)
+function editAttenSteps_Callback(~, ~, ~)
+function editAttenSteps_CreateFcn(~, ~, ~)
+function editAttenMin_Callback(~, ~, ~)
+function editAttenMin_CreateFcn(~, ~, ~)
+
+function editPitchMax_Callback(~, ~, ~)
+function editPitchMax_CreateFcn(~, ~, ~)
+function editPitchSteps_Callback(~, ~, ~)
+function editPitchSteps_CreateFcn(~, ~, ~)
+function editPitchMin_Callback(~, ~, ~)
+function editPitchMin_CreateFcn(~, ~, ~)
+
+function editLeftValveTime_Callback(~, ~, ~)
+function editLeftValveTime_CreateFcn(~, ~, ~)
+function editRightValveTime_Callback(~, ~, ~)
+function editRightValveTime_CreateFcn(~, ~, ~)
+function editCenterValveTime_Callback(~, ~, ~)
+function editCenterValveTime_CreateFcn(~, ~, ~)
+
+function slideCenterRewardP_CreateFcn(~, ~, ~)
+function editCenterRewardP_CreateFcn(~, ~, ~)
+
+
+% --- Executes on button press in stim_limit.
+function stim_limit_Callback(hObject, eventdata, handles)
+function limit_menu_Callback(hObject, eventdata, handles)
+function limit_menu_CreateFcn(hObject, eventdata, handles)
+
+
+% --- Executes on slider movement.
+function slider3_CreateFcn(hObject, eventdata, handles)
+global gf
+set(hObject,'value',gf.valveTimes(3))
+
+function slider6_CreateFcn(hObject, eventdata, handles)
+global gf
+set(hObject,'value',gf.valveTimes(6))
+
+function slider9_CreateFcn(hObject, eventdata, handles)
+global gf
+set(hObject,'value',gf.valveTimes(9))
+
+function valveTime3_CreateFcn(hObject, eventdata, handles)
+global gf
+set(hObject,'string',num2str(gf.valveTimes(3)))
+
+function valveTime6_CreateFcn(hObject, eventdata, handles)
+global gf
+set(hObject,'string',num2str(gf.valveTimes(6)))
+
+function valveTime9_CreateFcn(hObject, eventdata, handles)
+global gf
+set(hObject,'string',num2str(gf.valveTimes(9)))
+
+function slider3_Callback(hObject, eventdata, handles)
+update_valve_time(3, get(hObject,'value'))
+set( handles.valveTime3,'string', num2str( get(hObject,'value')))
+
+function slider6_Callback(hObject, eventdata, handles)
+update_valve_time(6, get(hObject,'value'))
+set( handles.valveTime6,'string', num2str( get(hObject,'value')))
+
+function slider9_Callback(hObject, eventdata, handles)
+update_valve_time(9, get(hObject,'value'))
+set( handles.valveTime9,'string', num2str( get(hObject,'value')))
+
+function valveTime3_Callback(hObject, eventdata, handles)
+update_valve_time(3, str2double(get(hObject,'string')))
+
+function valveTime6_Callback(hObject, eventdata, handles)
+update_valve_time(6, str2double(get(hObject,'string')))
+
+function valveTime9_Callback(hObject, eventdata, handles)
+update_valve_time(9, str2double(get(hObject,'string')))
+
+function update_valve_time(idx, value)
+
+global gf
+gf.valveTimes(idx) = value;
