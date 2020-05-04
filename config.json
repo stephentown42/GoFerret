@@ -1,0 +1,20 @@
+{
+	"home_dir": "C:/Users/steph/Documents/MATLAB/Applications/GoFerret",
+	"save_dir": "E:/Behavior",
+	"tank_parent": "E:/UCL_Behaving",
+	"weight_dir": "C:/Users/steph/Dropbox/Ferret_weights/Online",
+	"stimDevice": "RX8",
+	"recDevice": "RZ2",
+	"recFerrets": ["F1703_Grainger","F1701_Pendleton","F1810_Ursula","F1811_Dory","F1901_Crumble","F1902_Eclair","F1904_Flan","F1905_Sponge","F1808_Skittles"],
+	"trackFerrets": ["703_Grainger","1701_Pendleton","1808_Skittles"],
+	"high_res_video": "C:/Users/steph/Documents/Python/Realsense_Capture/HighRes_IR_single_rec.py",
+	"split_screen_video": "C:/Users/steph/Documents/Python/Realsense_Capture/SplitScreen_IR_rec.py",
+	"order":{"F1701_Pendleton": "ST",
+		"F1703_Grainger": "ST",
+		"F1810_Ursula": "3",
+		"F1811_Dory": "5",
+		"F1901_Crumble": "2",
+		"F1902_Eclair": "4",
+		"F1904_Flan": "6",
+		"F1905_Sponge": "1"}
+}
