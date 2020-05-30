@@ -1,4 +1,10 @@
 function level99_FRA_Jumbo
+%
+% Plays a sequence of tones from a 
+%
+% Stephen Town
+%   - 2019: First developed
+%   - 2020 May 30: Added stim init checks
 
 
 global DA gf h 
@@ -12,7 +18,7 @@ try
     % Timing
     gf.sessionTime = (now - gf.startTime)*(24*60*60);
     set(h.sessionLength,'string', sprintf('%0.1f secs',gf.sessionTime));   
-    updateTimeline(20);
+%     updateTimeline(20);
 
     switch gf.status
 
@@ -35,6 +41,8 @@ try
             gf.stim.nTrials(gf.stim_index) = gf.stim.nTrials(gf.stim_index) + 1;  
             gf.stim_index = gf.stim_index + 1;           
             
+            gf.wait_period = gf.duration + gf.isi.min + (gf.isi.range * rand(1));
+            
             % Convert stimulus positions to multiplex (mux) values
             gf.SPKmux = getMUXfamily( gf.Speaker);
             DA.SetTargetVal( sprintf('%s.Spkr-mux-01', gf.stimDevice), gf.SPKmux(1));
@@ -43,14 +51,8 @@ try
             DA.SetTargetVal( sprintf('%s.Spkr-mux-12', gf.stimDevice), gf.SPKmux(2)); 
             
             % Time to Sample conversion 
-            gf.isiSamps = ceil(gf.isi*gf.fStim*(1+rand(1)));
-            gf.stimSamps = ceil(gf.duration*gf.fStim);
-
-            playDuration = gf.isiSamps + gf.stimSamps;
-            
+            gf.stimSamps = ceil(gf.duration*gf.fStim);           
             DA.SetTargetVal( sprintf('%s.stimSamps', gf.stimDevice), gf.stimSamps);  
-            DA.SetTargetVal( sprintf('%s.stim&intSamps', gf.stimDevice), gf.isiSamps+gf.stimSamps);
-            DA.SetTargetVal( sprintf('%s.playDuration', gf.stimDevice), playDuration);         
             
             % Update online GUI      
             set(h.status,     'string', sprintf('%s',gf.status))
@@ -68,20 +70,24 @@ try
             gf.startTrialTime = invoke(DA,'GetTargetVal',sprintf('%s.zTime',gf.stimDevice));
             gf.startTrialTime = gf.startTrialTime / gf.fStim;
 
-            DA.SetTargetVal(sprintf('%s.manualPlay', gf.stimDevice), 1);                
-            DA.SetTargetVal(sprintf('%s.manualPlay', gf.stimDevice), 0);        
+            mp_ok(1) = DA.SetTargetVal(sprintf('%s.manualPlay', gf.stimDevice), 1);                
+            mp_ok(2) = DA.SetTargetVal(sprintf('%s.manualPlay', gf.stimDevice), 0);        
 
+            if ~all(mp_ok)
+                warning('Failed to intiate stimulus presentation')
+            end
+            
             set(h.comment,'string','Stim Start');
 
             gf.status = 'WaitForStim';                   
-            set(h.status,'string',gf.status);
+            set(h.status,'string',gf.status);            
 
 
         case('WaitForStim')        
 
             timeNow = DA.GetTargetVal(sprintf('%s.zTime',gf.stimDevice)) ./ gf.fStim; 
             timeElapsed = timeNow - gf.startTrialTime;
-            timeRemaining  = gf.duration + gf.isi - timeElapsed;
+            timeRemaining  = gf.wait_period - timeElapsed;
 
             if timeRemaining > 0
 
