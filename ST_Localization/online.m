@@ -22,7 +22,7 @@ function varargout = online(varargin)
 
 % Edit gfe above text to modify gfe response to help online
 
-% Last Modified by GUIDE v2.5 07-Feb-2020 12:58:04
+% Last Modified by GUIDE v2.5 03-Mar-2020 09:26:26
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -49,116 +49,36 @@ function online_OpeningFcn(hObject, ~, handles, varargin)
 
 global DA gf h
 
+
+% Subject-specific actions
+if any( strcmp( gf.subjectDir, gf.recFerrets))
+               
+    isOk = start_recording(DA, gf.tank);
+    
+    % Stop early if something is wrong
+    if ~isOk
+        close(handles.figure1)
+        return
+    end
+
+    % Get block name
+    gf.recBlock = get_current_block(gf.tank);
+    
+    if isempty(gf.recBlock)
+        DA.SetSysMode(0);       % Set device to idle
+    end        
+else    
+    
+    gf.recBlock = 'log';
+    start_preview(DA)
+end
+
+% Pass objects 
 handles.output = hObject;
 guidata(hObject, handles);
 h = handles;
 
-% Establish connection with TDT 
-DA = actxcontrol('TDevAcc.X');
-DA.ConnectServer('Local');
-
-sl=strfind(gf.saveDir,'\');
-gf.subjectDir=gf.saveDir(sl(end)+1:end);
-
-recFerrets = {'F1801_Carter','F1807_Cheeseburger',...
-              'F1703_Grainger','F1701_Pendleton','F1904_Flan','F1905_Sponge',...
-              'F1810_Ursula','F1811_Dory','F1901_Crumble','F1902_Eclair','F0_Developer'};
-
-if any( strcmp( gf.subjectDir, recFerrets))
-    choice = 'Yes';%('Do you want to record neural data to tank during task?','s');
-else
-    choice = 'No';
-end
-
-
-switch choice
-    
-    case 'Yes'
-        
-        gf.tankDir='D:\UCL_Behaving';
-        gf.tankDir = fullfile(gf.tankDir, gf.subjectDir);
-        
-        if ~isdir(gf.tankDir),
-            warning('Tank \n %s \n does not exist - please create in open Ex')          %#ok<*WNTAG>
-        end
-        
-        DA.SetTankName(gf.tankDir)
-        DA.SetSysMode(3);
-        
-        pause(3)
-        
-        % Get block name
-        TT = actxcontrol('TTank.X');
-        TT.ConnectServer('Local','Me');
-        tankOpen=TT.OpenTank(gf.tankDir,'R');
-         pause(1)
-        gf.recBlock = TT.GetHotBlock; 
-        gf.recBlock = TT.GetHotBlock; 
-        TT.CloseTank;
-        TT.ReleaseServer;
-        clear TT
-        
-        if isempty(gf.recBlock),
-            gf.recBlock = 'UnknownBlock';
-            
-            disp('Unknown Block - start GoFerret again')
-            %             % Set device to idle
-            % (This avoids sounds/lights being produced when you no longer have GUI control)
-            DA.SetSysMode(0);
-            
-            % Close connections and windows
-            DA.CloseConnection
-            
-            close(handles.figure1)
-            
-            % Restore default paths
-            path(gf.defaultPaths)
-            
-            % Delete structures
-            clear global DA gf h
-            clear
-        end
-        
-    case 'No'
-     
- 
-    %DAfig = figure('position',[0 0 100 100],'visible','on');
-    gf.systemStatus = DA.SetSysMode(2);         
-    errorCount      = 0;
-    
-    while ~gf.systemStatus && errorCount < 10
-    
-       errorCount = errorCount + 1;
-       clear global DA 
-       fprintf('Redialing TDT\n')
-       DA = actxcontrol('TDevAcc.X');
-       DA.ConnectServer('Local');
-       gf.systemStatus = DA.SetSysMode(2);
-       pause(3)      
-    end
-    
-    if ~gf.systemStatus
-        error('Could not start TDT')
-    end
-    
-    gf.recBlock = 'log';
-    pause(3)
-end
-
-% Get sample rates 
-gf.fStim = DA.GetDeviceSF(gf.stimDevice);       
-gf.fRec  = DA.GetDeviceSF(gf.recDevice);
-
-% Run video function in background (requires '&' operator)
-trackFerrets = {'F1701_Pendleton','F1703_Grainger','F1808_Skittles'};
-if any( strcmp( gf.subjectDir, trackFerrets))
-    !python C:\Users\Dumbo\Documents\Python\HighRes_IR_single_rec.py & exit &
-%     !python C:\Users\Dumbo\Documents\Python\Webcam_test_IR2_multicam_save.py & exit &
-else
-    !python C:\Users\Dumbo\Documents\Python\SplitScreen_IR_rec.py & exit &
-end
-
-% Reset all parameter tags
+% Reset all parameter tags (can probably be removed at some point)
 tags = {'bit0C','bit1C','bit2C','bit4C','bit5C','bit6C','bit7C',...
         'leftLick','centerLick','rightLick',...
         'leftValve','centerValve','rightValve'};
@@ -170,24 +90,24 @@ for i = 1 : length(tags)
 end
 
 % Set date
-t        = fix(clock); 
-ss       = datestr(now,'SS.FFF');
-temp{1}  = sprintf('%d-%d-%d',t(3),t(2),t(1)); 
-temp{2}  = sprintf('%d:%d:%d',t(4),t(5),t(6));
-set(handles.dateH,'string',sprintf('%s\n%s\n',temp{1},temp{2}))
-
+set(handles.dateH,'string',...
+    sprintf('%s\n%s\n', datestr(now,'dd-mm-yyyy'),datestr(now, 'HH_MM_SS')))
 
 % Make a new tab delimited file 
-paramFile = gf.paramFile(1:length(gf.paramFile)-4);                  % Remove extension from file name    
-filename  = sprintf('%02d_%02d_%02d %s %02d_%02d_%s %s.txt',...
-                        t(3), t(2), t(1), paramFile,...
-                        t(4), t(5), ss, gf.recBlock); 
+[~, paramFile, ~] = fileparts( gf.paramFile);                  % Remove extension from file name    
 
-gf.fid = fopen( fullfile( gf.saveDir, filename), 'wt');
+filename = [datestr(now,'dd_mm_yyyy XXX HH_MM_SS.FFF') ' ' gf.recBlock '.txt'];
+filename = strrep( filename, 'XXX', paramFile);
+filename = fullfile( gf.save_dir, gf.subjectDir, filename);
+
+gf.fid = fopen( filename, 'wt');
 logTrial(0,'header');      
-set(h.saveTo, 'string', strcat('Save to: ',gf.saveDir,'\', filename));
+set(h.saveTo, 'string', ['Save to: ' filename]);
 
 %Set devices
+gf.fStim = DA.GetDeviceSF( gf.stimDevice); 
+gf.fRec = DA.GetDeviceSF( gf.recDevice);   
+
 set(handles.devices,'string',sprintf(' %s \n %.3f',gf.stimDevice, gf.fStim))
 set(handles.slideCenterRewardP, 'value', gf.centerRewardP)
 set(handles.editCenterRewardP, 'string', num2str(gf.centerRewardP))
@@ -218,14 +138,14 @@ end
 
 % Timeline               
 % Create figure
+  
 h.timelineF = figure('NumberTitle',    'off',...
                       'name',           'Timeline',...
                       'color',          colors.background,...
                       'units',          'centimeters',...
-                      'position',       [34.1 1.72 14.8 24.2],...
+                      'position',       [34.1 1.72 10 5],...
                       'MenuBar',        'none',...
-                      'KeyPressFcn',    @KeyPress);    
-
+                      'KeyPressFcn',    @KeyPress);  
 % Create axes labels
 yticklabels = cell(12,1);
 
@@ -292,8 +212,19 @@ end
 if gf.track
     DA.SetTargetVal( sprintf('%s.track_thresh',gf.stimDevice), gf.trackThreshold);
 end
+
+% Run video function in background (requires '&' operator)
+pause(2)
+
+if any( strcmp( gf.subjectDir, gf.trackFerrets))
+    gf.video_path = gf.high_res_video;
+else
+    gf.video_path = gf.split_screen_video;
+end
+
+eval( sprintf('!python %s & exit &',  gf.video_path))
     
-if isvalid(h.tasktimer) == 1,
+if isvalid(h.tasktimer) == 1
     start(h.tasktimer);
 end
 
@@ -568,8 +499,9 @@ for i = 1 : nUnique(h.im)
     fprintf('\n')
 end
 
-% Close log file
+% Close log file and reset gf structure
 fclose(gf.fid);
+gf = reset_gf(gf);
 
 % Stop task timer
 stop(h.tasktimer);
@@ -578,22 +510,13 @@ stop(h.tasktimer);
 % (This avoids sounds/lights being produced when you no longer have GUI control)
 DA.SetSysMode(0);
 
-% Close connections and windows
-DA.CloseConnection;
-
+% Delete graphics 
 close(handles.figure1)
 close(h.timelineF)
 close(h.performanceF)
-
-% Restore default paths
-path(gf.defaultPaths);
+clear global h
 
 % Delete structures
-clear global DA gf h
-clear
-
-gf = [];
-
 disp('session ended')
 disp('All structures removed and default paths restored')
 
@@ -704,3 +627,12 @@ function update_valve_time(idx, value)
 
 global gf
 gf.valveTimes(idx) = value;
+
+
+% --- Executes on button press in s6_override.
+function s6_override_Callback(hObject, eventdata, handles)
+
+global DA gf
+
+ DA.SetTargetVal( sprintf('%s.s6_override', gf.stimDevice),  hObject.Value);  
+

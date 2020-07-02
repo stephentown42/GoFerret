@@ -22,7 +22,7 @@ function varargout = GoFerret(varargin)
 
 % Edit the above text to modify the response to help GoFerret
 
-% Last Modified by GUIDE v2.5 30-Jan-2020 13:45:20
+% Last Modified by GUIDE v2.5 04-May-2020 14:17:17
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -50,31 +50,37 @@ function GoFerret_OpeningFcn(hObject, ~, handles, varargin)
 handles.output = hObject;
 guidata(hObject, handles);
 
-if isempty(whos('global','gf')) == 0,
- clear gf
+if isempty(whos('global','gf')) == 0
+    clear gf
 end
 
-global gf
+global gf DA TT
 
+% Read configuration file
+gf = jsondecode( fileread( 'config.json'));
 gf.defaultPaths = path;
 
-% User computer name to determine devices used
+% Set order from config file
+ferrets = fieldnames(gf.order);
 
-if strcmp(getenv('computername'),'DUMBO-PC') || strcmp(getenv('computername'),'RVC-HP1') || strcmp(getenv('computername'),'FERRET-PC')
+for i = 1 : numel( ferrets)
+   
+    field_name = ['order_' ferrets{i}(7:end)]; % Skip F number 
     
-    gf.stimDevice = 'RX8';
-    gf.recDevice  = 'RZ2';
+    eval( sprintf('handle_val = handles.%s;', field_name))
+    eval( sprintf('handle_str = gf.order.%s;', ferrets{i}))
     
-elseif strcmp(getenv('computername'),'Rockefeller-HP1')
-        
-    gf.stimDevice = 'RZ6';
-    gf.recDevice  = 'RZ2';
-    
-else
-    gf.stimDevice = 'RM1';
-    gf.recDevice  = [];
+    set( handle_val, 'string', handle_str)
 end
- 
+
+% Establish connection to TDT
+DA = actxcontrol('TDevAcc.X');
+gf = establish_TDev_connection(handles, DA, gf);
+
+TT = actxcontrol('TTank.X');
+establish_TTank_connection(handles, TT)
+
+
 % Enable start if past 12:00
 t = clock;
 if t(4) > 12
@@ -85,59 +91,103 @@ else
     set(handles.weight,'userdata',0)
 end    
 
-% Load folder options
-load_userList(handles)
-load_subjectList(handles)
+set(handles.weightDir,'string', gf.weight_dir)
 
-% set(gcf,'units','pixels','position',[520 168 929 637]);
+% Load folder options
+load_userList(handles, gf.home_dir)
+load_subjectList(handles, gf.save_dir)
+
+
+
+function gf = establish_TDev_connection(h, DA, gf)
+
+% Establish connection to server
+if ~DA.ConnectServer('Local')    
+    h.connection_status.String = 'Connection failed';
+    h.connection_status.ForegroundColor = [0.8 0 0];
+    error('TDT Connection Failed')
+else
+    h.connection_status.String = 'Connection successful';
+    h.connection_status.ForegroundColor = [0 0.8 0];
+end
+
+% Confirm access to devices
+gf.fStim = DA.GetDeviceSF( gf.stimDevice);       
+gf.fRec = DA.GetDeviceSF( gf.recDevice);
+
+h.stim_device.String = sprintf('%s (%.0f Hz)', gf.stimDevice, gf.fStim);
+h.rec_device.String = sprintf('%s (%.0f Hz)', gf.recDevice, gf.fRec);
+
+
+
+
+
+function establish_TTank_connection(handles, TT)
+
+if ~TT.ConnectServer('Local','Me')       
+    handles.tank_status.String = 'Could not connect to Tankconnected';
+    error('Failed to open TTank connection')
+else        
+    handles.tank_status.String = 'Tank connected';
+end
+
+
+
+% --- Executes on button press in close.
+function close_Callback(hObject, eventdata, handles)
+% hObject    handle to close (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Close connections and windows
+global DA TT gf
+
+DA.CloseConnection;
+TT.ReleaseServer;        
+
+% Restore default paths
+path(gf.defaultPaths);
+
+% Close GoFerret
+close(handles.figure1)
+
+clear global DA TT
 
 
 
 %%%%%%%%%%%%%%% 1/5 User selects directory for stage files %%%%%%%%%%%%%%%%
 
 % Load available directories
+function load_userList(handles, file_path)
 
-function load_userList(handles)
-
-    % home_dir directory
-    % Please note that the home_dir directory is specific for each computer.
-    % Adding GoFerret will require lines home_dir to be redefined (twice) below
-
-    home_dir = strcat('C:\Users\',getenv('username'),'\Documents\MATLAB\Applications\GoFerret');
-
-    % Writes files from directory (home_dir) to left listbox
-   
-    dir_struct                  = lsDir(home_dir);
-    [sorted_names,sorted_index] = sortrows({dir_struct.name}');
-    handles.file_names          = sorted_names;
-    handles.is_dir              = [dir_struct.isdir];
-    handles.sorted_index        = sorted_index;
+    % Writes files from directory to listbox   
+    S = dir(file_path);
+    S = S( cat(1, S.isdir) == 1);
     
+    handles.is_dir = [S.isdir];
+    [handles.file_names , handles.sorted_index] = sortrows({S.name}');
+        
     guidata(handles.figure1,handles)
-    set(handles.userList,   'String',handles.file_names,'Value',1)
-    set(handles.userEdit,   'String',home_dir)
+    set(handles.userList,'String',handles.file_names,'Value',1)
+    set(handles.userEdit,'String',file_path)
     
     
 % Select task folder (e.g. ST_TimbreDiscrim)   
 function userList_Callback(~,~,handles)                     %#ok<*DEFNU>
     
     global gf
-
-    % Return to home_dir directory
-    %  Redefine on new computers
+            
+    S = dir(gf.home_dir);
+    S = S( cat(1, S.isdir) == 1);
     
-    home_dir = strcat('C:\Users\',getenv('username'),'\Documents\MATLAB\Applications\GoFerret');     
-    
-    dir_struct           = lsDir(home_dir);
-    [~,sorted_index]     = sortrows({dir_struct.name}');    
-    handles.is_dir       = [dir_struct.isdir];
-    handles.sorted_index = sorted_index;
-
+    handles.is_dir = [S.isdir];
+    [~, handles.sorted_index] = sortrows({S.name}');    
+       
     % Open selected file and load filenames (m files only)
     index_selected  = get(handles.userList,'Value');
     file_list       = get(handles.userList,'String');
     filename        = file_list{index_selected};
-    filename        = fullfile(home_dir, filename);
+    filename        = fullfile(gf.home_dir, filename);
     
     if  handles.is_dir(handles.sorted_index(index_selected))
                 
@@ -149,20 +199,14 @@ function userList_Callback(~,~,handles)                     %#ok<*DEFNU>
 
 
 % Load available stage files
-function load_stageList(dir_path,handles)
+function load_stageList(file_path, handles)
 
     % Writes matlab files from stage directory (dir_path) to center listbox
-
-    dir_path = strcat(dir_path,'\stages'); % Goes directly into stage file: could cause problems if GoFerret structure is not adhered to             
-    cd(dir_path)
+    file_path = fullfile(file_path,'stages'); % Goes directly into stage file: could cause problems if GoFerret structure is not adhered to    
+    S = dir( fullfile( file_path, '*.m')); 
     
-    dir_struct = dir('*.m'); % Matlab files only
-    
-    
-    [sorted_names,sorted_index] = sortrows({dir_struct.name}');
-    handles.file_names          = sorted_names;
-    handles.is_dir              = [dir_struct.isdir];
-    handles.sorted_index        = sorted_index;
+    [handles.file_names, handles.sorted_index ] = sortrows({S.name}');
+    handles.is_dir = [S.isdir];
     
     guidata(handles.figure1,handles)
     
@@ -171,23 +215,20 @@ function load_stageList(dir_path,handles)
     
     % Set edit box as selected file
     index_selected  = get(handles.stageList,'Value');
-    file_list       = get(handles.stageList,'String');
+    file_list = get(handles.stageList,'String');
     
     set(handles.stageEdit,'String',file_list{index_selected})
     
     % Enables default to first file without further user input
     global gf
-    gf.filename = file_list{index_selected};
-    gf.filename = gf.filename(1:length(gf.filename)-2); % Remove extension
+    [~, gf.filename, ~] = fileparts( file_list{index_selected});    
     
     % Load Parameters list for default file
-    load_parameterList(gf.directory,handles)
+    load_parameterList(gf.directory, handles)
 
-    
-    
+        
     
 %%%%%%%%%%%%%%%%%%%%%%%% 2/5 Select stage file %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 function stageList_Callback(~, ~, handles)
   
     global gf
@@ -202,20 +243,15 @@ function stageList_Callback(~, ~, handles)
     load_parameterList(gf.directory,handles)
    
     
-    function load_parameterList(dir_path, handles)
+function load_parameterList(file_path, handles)
 
     global gf    
-        
-    % Writes text files from parameters directory (dir_path) to right listbox
+            
+    file_path = fullfile(file_path,'parameters');         
+    S = dir( fullfile( file_path, [gf.filename(1:7) '*']));
     
-    dir_path = strcat(dir_path,'\parameters'); % Goes directly into stage file: could cause problems if GoFerret structure is not adhered to             
-    cd(dir_path)
-    
-    dir_struct                  = dir(sprintf('%s*',gf.filename(1:7))); % all file names with the 'level #' prefix
-    [sorted_names,sorted_index] = sortrows({dir_struct.name}');
-    handles.file_names          = sorted_names;
-    handles.is_dir              = [dir_struct.isdir];
-    handles.sorted_index        = sorted_index;
+    [handles.file_names, handles.sorted_index] = sortrows({S.name}');
+    handles.is_dir = [S.isdir];
     
     guidata(handles.figure1,handles)
     set(handles.parameterList,'String',handles.file_names,'Value',1)
@@ -239,7 +275,7 @@ function stageList_Callback(~, ~, handles)
     
 %%%%%%%%%%%%%%%%%%%%%%%% 3/5 Select parameter file %%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
-    function parameterList_Callback(~, ~, handles)
+function parameterList_Callback(~, ~, handles)
 
     global gf
 
@@ -252,48 +288,38 @@ function stageList_Callback(~, ~, handles)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%% 4/5 Select subject %%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function load_subjectList(handles)
-
-    save_dir = 'D:\Behavior';
+function load_subjectList(handles, file_path)   
     
-    dir_struct                  = lsDir(fullfile(save_dir,'F*'));
-    [sorted_names,sorted_index] = sortrows({dir_struct.name}');
-    handles.file_names          = sorted_names;
-    handles.is_dir              = [dir_struct.isdir];
-    handles.sorted_index        = sorted_index;
+    dir_struct = dir( fullfile(file_path, 'F*'));
+    handles.is_dir = [dir_struct.isdir];
+    [handles.file_names, handles.sorted_index ] = sortrows({dir_struct.name}');                             
     
     guidata(handles.figure1,handles)
     
     set(handles.subjectList,'String',handles.file_names,'Value',1)
     
     % Set temporary as default
-    set(handles.editSaveDir,'String',save_dir)
+    set(handles.editSaveDir,'String', file_path)
     set(handles.subjectEdit,'String','Temporary')  
     
 
 function subjectList_Callback(~, ~, handles)    
     
     index_selected  = get(handles.subjectList,'Value');
-    file_list       = get(handles.subjectList,'String');
-    save_dir        = file_list{index_selected};
+    file_list = get(handles.subjectList,'String');
+    ferret = file_list{index_selected};
     
+    global gf    
+    set(handles.editSaveDir,'String', fullfile(gf.save_dir, ferret))
     
-    set(handles.subjectEdit,'String',save_dir)  
-    
-    save_dir = strcat('D:\Behavior\',save_dir);    
-    set(handles.editSaveDir,'String',save_dir)
     
     
 function subjectEdit_Callback(~, ~, handles)
     
-save_dir = get(handles.subjectEdit,'string');
-save_dir = strcat('D:\Behavior\',save_dir);
+save_dir = fullfile( get(handles.editSaveDir,'string'),...
+                     get(handles.subjectEdit,'string'));
 
-if isdir(save_dir)
-    set(handles.editSaveDir,'String',save_dir)
-else
-    msgbox('Subject is not valid - save directory not changed','Warning','warn')
-end
+set(handles.editSaveDir,'String',save_dir)
 
 
 
@@ -301,36 +327,58 @@ end
 function startH_Callback(~, ~, handles)
 
 global gf
-gf.saveDir  = get(handles.editSaveDir,'string');  
+
+% Confirm file paths
+config = jsondecode( fileread( 'config.json'));
+gf.tank_parent = config.tank_parent;
+gf.weight_dir = config.weight_dir;
+
 gf.calibDir = get(handles.calibrationFolder,'string');  
+gf.saveDir = get(handles.editSaveDir,'string');  
+[~, gf.subjectDir] = fileparts(gf.saveDir);
+gf.tank = fullfile(gf.tank_parent, gf.subjectDir);  % Note that for non-recording animals, this file doesn't need to exist
+
 % Add directory and subfolders to path definition
-addpath( genpath( gf.directory ))
+if isfolder( gf.directory)
+    addpath( genpath( gf.directory ))
+else
+    fprintf('Failed to add paths...\n%s\n', gf.directory)
+    return
+end
 
 % Save weight to file
 weightData = get(handles.weight,'userdata');
+% set(handles.weight,'string','0')
 
 if ~isnan(weightData)   % If afternoon flag not set
 
     if numel(weightData) == 1, weightData = [0 0]; end
     
+    % Get weight directory
     weightDir  = get(handles.weightDir,'string');
     weightData = array2table(weightData,'variableNames',{'DateNum','Weight'});
-    ferret     = get(handles.subjectEdit,'string');
-    weightFile = fullfile(weightDir, [ferret '.mat']);
+    
+    % Get ferret from gui
+    ferret = handles.subjectList.String;
+    ferret = ferret{handles.subjectList.Value};
+    
+    % Check file for this animal exists
+    weightFile = fullfile(weightDir, [ferret '.csv']);
 
+    if ~exist(weightFile,'file')
+        error('Could not find weight file')
+    end
+    
+    % Report husbandy limits for animal if Monday
     if strcmp('Mon',datestr(now,'ddd'))
         figure('name',sprintf('%s: %dg %.0fg %.1fml', ferret, weightData.Weight, weightData.Weight*0.88, weightData.Weight*.06))
     end
 
-    
-    load(weightFile, 'T')
+    % Add data to table
+    T = readtable(weightFile, 'delimiter', ',');
     T = [T; weightData];
-    save(weightFile,'T')
+    writetable(T, weightFile, 'delimiter', ',')
 end
-
-
-
-close(handles.figure1)
 
 parameters
 
@@ -344,10 +392,8 @@ global DA
 valve_no = [3 9];
 valve_time = 2;
 
-% Connect to TDT
-DA = actxcontrol('TDevAcc.X');
-DA.ConnectServer('Local');    
-DA.SetSysMode(2); % Set to preview
+status = DA.SetSysMode(2); % Set to preview
+fprintf('Flushing (%d)\n', status)
 pause(3)
 
 % For each response valve
@@ -367,8 +413,6 @@ pause(valve_time)
 % Close connection
 DA.SetSysMode(0);
 
-% Close connections and windows
-DA.CloseConnection
 
 
 
@@ -512,7 +556,7 @@ subject = strs{val};
 
 % Load weight file
 pathname = get(h.weightDir,'string');
-load( fullfile( pathname, [subject '.mat']));
+T = readtable( fullfile( pathname, [subject '.csv']), 'delimiter',',');
 
 
 function saveWeightFile(h, T)
@@ -613,8 +657,8 @@ function populateListBoxes(hObject, handles)
            myParam = 'level55_Ursula.txt';
            
        case 'F1811_Dory'
-           myLevel = 'level53_test.m';
-           myParam = 'level53_Dory.txt';
+           myLevel = 'level54_test.m';
+           myParam = 'level54_Dory.txt';
            
        case 'F1901_Crumble'
            myLevel = 'level55_test.m';
@@ -659,6 +703,68 @@ function setListBox(h,target)
     end
         
    
-  
+% Manual check of TDT connection 
+function check_connection_Callback(~, ~, ~)
+
+global DA
+
+fprintf('Running connection test...\n')
+
+if DA.SetSysMode(0)
+    fprintf('\tSuccessful state switch to idle...\n')
+else
+    fprintf('\tFailed switch to idle\n')
+    return
+end
+
+if DA.SetSysMode(1)
+    fprintf('\tSuccessful state switch to standby, please wait...\n')
+    pause(3)
+end
+
+if DA.SetSysMode(0)
+    fprintf('\tSuccessful state switch to idle - all checks passed :)\n')
+end
 
 
+% --- Executes on button press in redial_tdt.
+function redial_tdt_Callback(~, ~, ~)
+%
+% Here I'm using the ability to acquire a positive value for the sample
+% rate as an indicator of success. If this doesn't happen then usually
+% there's a failed connection (and it's faster than changing the status of
+% the device)
+
+global DA gf
+
+if DA.GetDeviceSF( gf.stimDevice) == 0
+    fprintf('TDT connection stalled - performing redial\n')
+else
+    fprintf('TDT connection looks ok - skipping request\n')
+    return
+end
+
+nDials = 10;
+connection_sucks = true;
+dial_idx = 1;
+
+while connection_sucks && dial_idx <= nDials
+   
+    fprintf('\tAttempt %d/%d:', dial_idx, nDials)
+    
+    DA = actxcontrol('TDevAcc.X'); 
+    DA.ConnectServer('Local')    
+    pause(1)
+    connection_sucks = DA.GetDeviceSF( gf.stimDevice) > 0;
+    
+    if connection_sucks        
+        fprintf('Failed\n')
+        dial_idx = dial_idx + 1;
+    else
+        fprintf('Successful!\n')
+        return
+    end
+end
+
+
+    
