@@ -13,6 +13,8 @@ try
 gf.sessionTime = (now - gf.startTime)*(24*60*60);
 set(h.sessionLength,'string', sprintf('%0.1f secs',gf.sessionTime));
 
+check_video_status;
+
 
 if gf.track == 1 
     if gf.trackThreshold > 0       
@@ -23,9 +25,6 @@ if gf.track == 1
 else
     gf.centerStatus = 1;
 end
-
-% Update timeline
-updateTimeline(20);
 
 
 %Run case
@@ -53,8 +52,6 @@ switch gf.status
         gf.targetSpout = gf.stimGrid(5);   % Define target spout based on target modality
         gf.centerPass  = 0;                % Latched variable using head direction to modulate reward value        
         
-%         if gf.targetSpout == 3, return; end
-
         if check_online_stim_limit( gf.targetSpout), return; end
         
         % Convert stimulus positions to multiplex (mux) values
@@ -177,7 +174,7 @@ switch gf.status
         end
         
         % Force single presentation
-        if gf.nStimRepeats == 1,                               
+        if gf.nStimRepeats == 1                               
             DA.SetTargetVal(sprintf('%s.playEnable', gf.stimDevice), 0);
         end
         
@@ -204,7 +201,7 @@ switch gf.status
             comment = sprintf('Awaiting response: \nTime remaining %0.1f s', timeRemaining);
             
             %Check response countdown
-            if timeRemaining <= 0,
+            if timeRemaining <= 0
                 
                 % Reset trial
                 DA.SetTargetVal( sprintf('%s.trialReset', gf.stimDevice), 1);
@@ -229,10 +226,12 @@ switch gf.status
             end
             
             % If a single response
-            if numel(licked_spout) == 1, 
+            if numel(licked_spout) == 1 
 
                 % Get response time
                 gf.responseTime = lickTime(licked_spout) ./ gf.fStim;  %Open Ex   
+                
+                if gf.responseTime == 0; keyboard; end
                 
                 % Track responses to estimate bias            
                 gf.biasTracker.idx = gf.biasTracker.idx + 1;
@@ -288,7 +287,7 @@ switch gf.status
         
         gf.correctionTrial = 0;
         
-        if DA.GetTargetVal(sprintf('%s.stimON', gf.stimDevice)) == 0;           
+        if DA.GetTargetVal(sprintf('%s.stimON', gf.stimDevice)) == 0           
             gf.status = 'PrepareStim';
         end
         
@@ -330,7 +329,7 @@ switch gf.status
             if gf.modality == 2
                 gf.status = 'PrepareStim';
             else
-                if DA.GetTargetVal(sprintf('%s.stimON', gf.stimDevice)) == 0;
+                if DA.GetTargetVal(sprintf('%s.stimON', gf.stimDevice)) == 0
                     gf.status = 'PrepareStim';
                 end
             end

@@ -17,24 +17,18 @@ try
 gf.sessionTime = (now - gf.startTime)*(24*60*60);
 set(h.sessionLength,'string', sprintf('%0.1f secs',gf.sessionTime));
 
+check_video_status;
 
-% Check other matlab
-% if isa(h.tcpip,'tcpip')
-%     if h.tcpip.BytesAvailable > 0    
-%         gf.centerStatus = fread(h.tcpip, h.tcpip.BytesAvailable);
-%         gf.centerStatus = max(gf.centerStatus);        
-% %         DA.SetTargetVal(sprintf('%s.trackEnable', gf.stimDevice), gf.centerStatus);
-%     end
-% %         
-%     fwrite(h.tcpip,  2)
-if gf.track == 1
-    gf.centerStatus = DA.GetTargetVal('RX8.trackingVal') < gf.trackThreshold;
+
+if gf.track == 1 
+    if gf.trackThreshold > 0       
+        gf.centerStatus = DA.GetTargetVal('RX8.trackingVal') < gf.trackThreshold;
+    else
+        gf.centerStatus = DA.GetTargetVal('RX8.trackingVal') < gf.trackThreshold;
+    end
 else
     gf.centerStatus = 1;
 end
-
-% Update timeline
-updateTimeline(20);
 
 
 %Run case
@@ -58,10 +52,8 @@ switch gf.status
         gf.centerPass  = 0;                 % Latched variable using head direction to modulate reward value        
         gf.centerReward = 0;
         gf.probe_trial = false;
-        
-%         if gf.targetSpout ~= 3
-%             return
-%         end
+                
+        if check_online_stim_limit( gf.targetSpout), return; end
         
         % Probe trial override
         if rand < gf.probe_probablity &&...
@@ -73,8 +65,7 @@ switch gf.status
             gf.Speaker = gf.probe_positions( probe_idx);
             gf.probe_trial = true;                                    
         end
-        
-        
+                
         % Convert stimulus positions to multiplex (mux) values
         gf.LEDmux = getMUXfamily( gf.LED); 
         gf.SPKmux = getMUXfamily( gf.Speaker);
@@ -123,19 +114,18 @@ switch gf.status
         DA.SetTargetVal( sprintf('%s.Spkr-mux-10', gf.stimDevice), gf.SPKmux(2));  % Brute force approach
         DA.SetTargetVal( sprintf('%s.Spkr-mux-11', gf.stimDevice), gf.SPKmux(2));  % Brute force approach
         DA.SetTargetVal( sprintf('%s.Spkr-mux-12', gf.stimDevice), gf.SPKmux(2));  % Brute force approach
-        DA.SetTargetVal( sprintf('%s.LED-mux-01', gf.stimDevice),  gf.LEDmux(1));
-        DA.SetTargetVal( sprintf('%s.LED-mux-10', gf.stimDevice),  gf.LEDmux(2));  % Brute force approach
-        DA.SetTargetVal( sprintf('%s.LED-mux-11', gf.stimDevice),  gf.LEDmux(2));  % Brute force approach
-        DA.SetTargetVal( sprintf('%s.LED-mux-12', gf.stimDevice),  gf.LEDmux(2));  % Brute force approach
+%         DA.SetTargetVal( sprintf('%s.LED-mux-01', gf.stimDevice),  gf.LEDmux(1));
+%         DA.SetTargetVal( sprintf('%s.LED-mux-10', gf.stimDevice),  gf.LEDmux(2));  % Brute force approach
+%         DA.SetTargetVal( sprintf('%s.LED-mux-11', gf.stimDevice),  gf.LEDmux(2));  % Brute force approach
+%         DA.SetTargetVal( sprintf('%s.LED-mux-12', gf.stimDevice),  gf.LEDmux(2));  % Brute force approach
         
         % Update online GUI      
-         set(h.status,     'string',sprintf('%s',gf.status))
-%         set(h.side,       'string',gf.speaker)          
-        set(h.pitch,      'string',gf.modality)     
-        set(h.holdTime,   'string',sprintf('%.3f s',gf.holdTime))
-        set(h.currentStim,'string',gf.domMod) 
-        set(h.target,      'string','-')        
-        set(h.trialInfo,  'string',sprintf('%d',gf.TrialNumber-1))  % Current time
+        set(h.status,     'string', sprintf('%s',gf.status))
+        set(h.pitch,      'string', gf.modality)     
+        set(h.holdTime,   'string', sprintf('%.3f s',gf.holdTime))
+        set(h.currentStim,'string', gf.Speaker) 
+        set(h.target,     'string', gf.targetSpout)        
+        set(h.trialInfo,  'string', sprintf('%d',gf.TrialNumber-1))  % Current trial
     
         gf.status = 'WaitForStart';
 
@@ -157,8 +147,7 @@ switch gf.status
             gf.status = 'WaitForResponse';           
             gf.startTrialTime = invoke(DA,'GetTargetVal',sprintf('%s.lick6time',gf.stimDevice));
             gf.startTrialTime = gf.startTrialTime / gf.fStim;
-            comment = 'Center spout licked';           
-                     
+            comment = 'Center spout licked';                               
         end
         
         %Update GUI
@@ -181,7 +170,7 @@ switch gf.status
         end
         
         % Force single presentation
-        if gf.nStimRepeats == 1,                               
+        if gf.nStimRepeats == 1                               
             DA.SetTargetVal(sprintf('%s.playEnable', gf.stimDevice), 0);
         end
         
@@ -208,7 +197,7 @@ switch gf.status
             comment = sprintf('Awaiting response: \nTime remaining %0.1f s', timeRemaining);
             
             %Check response countdown
-            if timeRemaining <= 0,
+            if timeRemaining <= 0
                 
                 % Reset trial
                 DA.SetTargetVal( sprintf('%s.trialReset', gf.stimDevice), 1);
@@ -233,7 +222,7 @@ switch gf.status
             end
             
             % If a single response
-            if numel(licked_spout) == 1, 
+            if numel(licked_spout) == 1 
 
                 % Get response time
                 gf.responseTime = lickTime(licked_spout) ./ gf.fStim;  %Open Ex     
@@ -246,17 +235,17 @@ switch gf.status
                 if licked_spout == gf.targetSpout  || gf.probe_trial
                                         
                      % Reward
-                     valveJumbo_J4(licked_spout, gf.valveTimes(licked_spout));
+                     valveJumbo_J5(licked_spout, gf.valveTimes(licked_spout), gf.box_mode);
                      comment = 'Correct - reward given';
                      gf.status = 'WaitForEnd';
                      
                      % Reward at center spout
                      if gf.centerRewardP > rand(1)                                                  
-                         gf.centerReward = 1;                         
-                         valveJumbo_J4(6, gf.centerValveTime);
+                         gf.centerReward = 1;                                                  
+                         valveJumbo_J5(6, gf.centerValveTime, gf.box_mode);
                      end
                      
-                     % Otherwise give time out
+                % Otherwise give time out
                 else
                     comment = 'Incorrect - repeating trial';
                     
@@ -297,7 +286,7 @@ switch gf.status
         
         gf.correctionTrial = 0;
         
-        if DA.GetTargetVal(sprintf('%s.stimON', gf.stimDevice)) == 0;           
+        if DA.GetTargetVal(sprintf('%s.stimON', gf.stimDevice)) == 0           
             gf.status = 'PrepareStim';
         end
         
@@ -339,7 +328,7 @@ switch gf.status
             if gf.modality == 2 
                 gf.status = 'PrepareStim';
             else
-                if DA.GetTargetVal(sprintf('%s.stimON', gf.stimDevice)) == 0;
+                if DA.GetTargetVal(sprintf('%s.stimON', gf.stimDevice)) == 0
                     gf.status = 'PrepareStim';
                 end
             end

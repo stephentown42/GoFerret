@@ -69,12 +69,7 @@ varargout{1} = handles.output;
 function revert_Callback(~, ~, handles)                      %#ok<*DEFNU>
 
 %Access parameters
-cd('C:\Users\Ferret\Documents\MATLAB\Applications\GoFerret\SD_Loc\parameters')
-
-[a b] = textread('stage1.txt', '%s %s'); 
-a     = [a b];
-
-set(handles.uitable1,'Data',a); 
+fprintt('Revert dont work here no more')
 
 
 function accept_Callback(~, ~, handles)

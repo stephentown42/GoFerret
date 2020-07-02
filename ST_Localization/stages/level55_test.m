@@ -15,35 +15,15 @@ try
 gf.sessionTime = (now - gf.startTime)*(24*60*60);
 set(h.sessionLength,'string', sprintf('%0.1f secs',gf.sessionTime));
 
-
-% Check other matlab
-% if isa(h.tcpip,'tcpip')
-%     if h.tcpip.BytesAvailable > 0    
-%         gf.centerStatus = fread(h.tcpip, h.tcpip.BytesAvailable);
-%         gf.centerStatus = max(gf.centerStatus);        
-% %         DA.SetTargetVal(sprintf('%s.trackEnable', gf.stimDevice), gf.centerStatus);
-%     end
-% %         
-%     fwrite(h.tcpip,  2)
-% if gf.track == 1        
-%     gf.centerStatus = DA.GetTargetVal('RX8.trackingVal') < gf.trackThreshold;
-% else
-    gf.centerStatus = 1;
-% end
-
-% Update timeline
-updateTimeline(20);
-
+% Update timeline (disabled in Win 10)
+check_video_status;
+gf.centerStatus = 1;
 
 %Run case
 switch gf.status
 
 %__________________________________________________________________________    
-    case('PrepareStim')%none to prepare
-        
-        % Signal reset to stimulus device
-%         DA.SetTargetVal(sprintf('%s.trialReset', gf.stimDevice), 1);                    
-%         DA.SetTargetVal(sprintf('%s.trialReset', gf.stimDevice), 0);
+    case('PrepareStim')
         
         % Obtain trial parameters                                
         [gf.hold, gf.holdTime] = getHoldTime(gf.hold);                       
