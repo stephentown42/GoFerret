@@ -42,12 +42,12 @@ if DA.SetTargetVal('RX8.valveIdx',  valveID);
 end
 
 % Update time line
-if isfield(h,'timelineA')
-
-    axes(h.timelineA);
-    hold on;
-    plot( gf.sessionTime, valveID,'^k');
-end
+% if isfield(h,'timelineA')
+% 
+%     axes(h.timelineA);
+%     hold on;
+%     plot( gf.sessionTime, valveID,'^k');
+% end
 
 function y = getMUXfamily(x, box_mode)
 

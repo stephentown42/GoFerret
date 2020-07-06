@@ -61,3 +61,25 @@ global h
     xlabel(h.metrix, 'Trial', 'color', colors.background)
     
     
+    
+function KeyPress(src,event)
+
+global gf DA
+
+if strcmp(event.Key,'equal')
+    valveJumbo_J5(6,gf.valveTimes(6), gf.box_mode)
+end
+
+% Valves based on F numbers
+for i = 1 : 12    
+   if strcmp(event.Key,sprintf('f%d',i))
+       valveJumbo_J5(i, gf.valveTimes(i), gf.box_mode)
+   end
+end
+
+if strcmp(event.Key,'+')        
+    DA.SetTargetVal( sprintf('%s.ManualPlay', gf.stimDevice),    1);
+    DA.SetTargetVal( sprintf('%s.ManualPlay', gf.stimDevice),    0);
+end
+
+
