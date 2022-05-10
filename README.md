@@ -1,6 +1,8 @@
 # GoFerret
 
-Matlab framework for behavioral testing of non-human listeners
+Matlab framework for behavioral testing.
+
+## Organization
 
 
 ## Tasks
