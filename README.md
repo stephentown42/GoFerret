@@ -14,6 +14,6 @@ Task for testing [effects of cortical inactivation on spatial hearing](https://j
 ### Coordinate specific sound localization
 Used to study whether listeners can report the location of sounds in [world or head-centered space](https://www.jneurosci.org/content/early/2022/04/27/JNEUROSCI.0291-22.2022.abstract).
 
-### Measuring frequency-response areas (FRAs)
+### Measuring frequency-response areas
 Presentation of tones with varying intensities and frequencies, used to characterize the spectral tuning of neurons and map tonotopy across neural populations.
   
