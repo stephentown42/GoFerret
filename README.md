@@ -12,8 +12,7 @@ function test() {
 
 
 ```sh
-cp README.md README.bak
-add-code-block README.bak >README.md
+GoFerret
 ```
 
 
