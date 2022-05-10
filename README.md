@@ -2,13 +2,9 @@
 
 Matlab framework for behavioral testing.
 
-## Organization
+## Get Started
 
-'''
-function test() {
-  consol.log('GoFerret');
-}
-'''
+Simply download the repository and open as the current folder in in Matlab, or add to Matlab path. Then run:
 
 
 ```sh
