@@ -4,7 +4,7 @@ Matlab framework for behavioral testing.
 
 ## Get Started
 
-Simply download the repository and open as the current folder in in Matlab, or add to Matlab path. Then run:
+Simply download the repository and open as the current folder in in Matlab, or add to Matlab path. In the command line, run:
 
 
 ```sh
