@@ -4,7 +4,11 @@ Matlab framework for behavioral testing.
 
 ## Organization
 
-consol.log('GoFerret')
+'''
+function test() {
+  consol.log('GoFerret');
+}
+'''
 
 
 ## Tasks
