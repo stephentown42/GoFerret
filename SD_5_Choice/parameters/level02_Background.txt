@@ -1,0 +1,23 @@
+abortTrial	360	
+abortedTrials	0
+absentTime	0.3
+centerRewardP	0.8	
+centerValveTime	0.15
+duration	0.250
+errorLimit	5
+holdIndii	1	
+holdMax	1.001	
+holdMin	0.501	
+holdSteps	10
+isi	0.250
+LED_bgnd_V	1
+LED_stim_V	2.8
+modalities	[0,1]
+nStimRepeats	-1
+period	0.1	
+response	[]	
+speakers	[1,2,3,4,5,7,8,9,10,11,12]
+Spkr_bgnd_V	0.01
+Spkr_stim_MF	20
+valveTimes	[0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2]
+
