@@ -1,5 +1,6 @@
 # Set Configuration
 
+To run GoFerret on a new machine, update the relevant paths and settings for your device
 
 ## Paths
 * home_dir: Directory containing GoFerret (allows the program to be called even when not current working directory)
@@ -12,8 +13,8 @@
 <br>
 
 ## Settings
-* stimDevice: Name of stimulus generation device 
-* recDevice: Name of neural recording device
+* stimDevice: Name of stimulus generation device (see OpenWorkBench tutorial for more information)
+* recDevice: Name of neural recording device (see OpenWorkBench tutorial for more information)
 * recFerrets: List of subjects in which to record data to TDT tank (all sessions get text logs, but only these subjects get tank records)
 * trackFerrets: List of subjects in which to use high res video (all other subjects will be videoed with the split_screen video)
 * order: Optional, dictionary used to provide metadata to users on the order in which to run ferrets
