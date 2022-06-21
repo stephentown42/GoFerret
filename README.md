@@ -21,7 +21,7 @@ Open repository as the current folder in in Matlab, or add to Matlab path, and r
 GoFerret
 ```
 
-<img src="docs/GoFerret_screenshot.png" alt="Screenshot of main GUI" style="width:900px;height:522px;">
+<img src="docs/img/GoFerret_screenshot.png" alt="Screenshot of main GUI" style="width:900px;height:522px;">
 
 
 ## Further Information
