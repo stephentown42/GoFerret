@@ -26,4 +26,4 @@ GoFerret
 
 ## Further Information
 
-See [Documentation](./docs) for further information on configuration, task information and [frequently asked questions](./docs/faq.md)
+See [Documentation](./docs) for further information on updating Quick Actions, task information and [frequently asked questions](./docs/faq.md)
