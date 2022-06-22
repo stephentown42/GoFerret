@@ -1,6 +1,6 @@
 # GoFerret Docs
 
-
+---
 
 ## Initial GUI
 
@@ -25,3 +25,5 @@ Users can add tasks to GoFerret to perform different experiments. Each task has 
 * **levels**: a directory containing scripts with the prefix level**.m
 * **parameters**: a directory containing metadata used for testing with a specific level, and possibly a specific subject
 * **toolbox**: a directory of matlab helper functions called by the system during data acquisition
+
+Details about each user project can be found in [Tasks](./tasks.md)
