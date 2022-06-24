@@ -25,5 +25,6 @@ Users can add tasks to GoFerret to perform different experiments. Each task has 
 * **levels**: a directory containing scripts with the prefix level**.m
 * **parameters**: a directory containing metadata used for testing with a specific level, and possibly a specific subject
 * **toolbox**: a directory of matlab helper functions called by the system during data acquisition
+* **tdt**: directory containing RPvdsEx circuits used in OpenProject (see TDT tutorial for more information)
 
 Details about each user project can be found in [Tasks](./tasks.md)
