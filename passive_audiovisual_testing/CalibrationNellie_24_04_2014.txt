@@ -1,0 +1,14 @@
+Calibration in RVC 24_04_2014
+
+/u/ sound;
+76dB Blips -3dB
+
+*0.5 70dB
+*0.1 56dB 
+*0.01 37dB
+
+30 dB noise
+
+/a/ sound;
+
+73.5dB Blips +1dB

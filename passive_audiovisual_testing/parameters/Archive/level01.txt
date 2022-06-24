@@ -1,0 +1,14 @@
+abortTrial	14	
+abortedTrials	0
+centerRewardP	1
+centerValveTime	200	
+duration	250		
+leftValveTime	200
+numSame	5	
+performance	zeros(2)
+period	0.1	
+response	[]	
+rightValveTime	200
+startResponseTime	[]	
+sumCorrect	0		
+
