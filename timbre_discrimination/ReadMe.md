@@ -20,8 +20,6 @@ Each level represents a protocol for running trials while shaping the initial be
 * [Level_05](https://github.com/stephentown42/Perceptual_Constancy_for_Vowels/blob/main/behavioral_task/GoFerret/ST_TimbreDiscrimination/stages/level05.m): Tbc
 * [Level_06](https://github.com/stephentown42/Perceptual_Constancy_for_Vowels/blob/main/behavioral_task/GoFerret/ST_TimbreDiscrimination/stages/level06.m): Tbc
 
-
-
 ## Test levels:
 
 Each level represents a different testing condition; the trial protocols are largely the same but the stimuli may vary in different ways (e.g. one vs. multiple stimulus presentations, different fundamental frequencies etc.)
@@ -34,6 +32,10 @@ Each level represents a different testing condition; the trial protocols are lar
 * Vowels varying in sound location: [Level 23](https://github.com/stephentown42/Perceptual_Constancy_for_Vowels/blob/main/behavioral_task/GoFerret/ST_TimbreDiscrimination/stages/level23_spatial.m)
 * Voiceless (whispered) vowels: [Level 09](https://github.com/stephentown42/Perceptual_Constancy_for_Vowels/blob/main/behavioral_task/GoFerret/ST_TimbreDiscrimination/stages/level09.m)
 
+
+## Toolbox
+
+Contains scripts for generating synthetic vowel sounds with different fundamental frequencies, or unvoiced vowels.
 
 ### Compatibility:
 Note that this code was designed for Matlab before the 2014 changes to the graphics system. We've encountered problems since then running version 1.0.0 on versions of Matlab after 2013b, as well as on Windows 10. A revised version (GoFerret 2.0.0) has been implemented for Windows 10 and can run on Matlab 2014 or later, but this was not used for this project - please contact @stephentown42 if you need more recent versions.
